@@ -1,6 +1,6 @@
 import api, config, utilities
 from datetime import datetime
-import json, time, sys
+import json, time, sys, re
 
 def get_date_string_ymd(timestamp):
   date = datetime.fromtimestamp(float(timestamp))
@@ -32,9 +32,19 @@ def find_newest_timestamp(directory):
           return message["ts"]
   return time.mktime(datetime.strptime(config.start_date, "%Y-%m-%d").timetuple()) # !@#$!@#%#@
 
-def launch_scrape(directory, method, params, timestamp):
+def launch_scrape(directory, method, params, timestamp, umap):
   cur_date = None
   cur_file = None
+
+  user_string = "|".join(umap.keys())
+
+  # CLOSURE
+  def replace_uid(match):
+    uid = match.group("id")
+    if uid in umap:
+      return "@%s"%umap[uid]
+    return "<@%s>"%uid
+
   for message in api.message_generator(method, params, timestamp):
     # the format will be line separated json objects for each message because
     # large json objects are the worst
@@ -48,6 +58,16 @@ def launch_scrape(directory, method, params, timestamp):
       utilities.mkdir_p("%s/%s"%(directory, datestring_short))
       cur_file = open("%s/%s/%s.json"%(directory, datestring_short, datestring_long), "a")
 
+    # clean up message object user ids
+    if config.replace_user_ids:
+      # replace who's talking
+      if "user" in message and message["user"] in umap:
+        message["user"] = umap[message["user"]]
+
+      # replace mentions (this is a bit slow!)
+      if "text" in message:
+        message["text"]  = re.sub("<@(?P<id>" + user_string + ")>", replace_uid, message["text"])
+
     # save! potentially devastating assumption: chronological
     cur_file.write("%s\n"%json.dumps(message))
 
@@ -55,7 +75,7 @@ def launch_scrape(directory, method, params, timestamp):
     cur_file.close()
 
 # scrape channels.
-def scrape_channels():
+def scrape_channels(umap):
   print "Getting channels..."
   for channel in api.channel_generator():
     if not config.scrape_archived_channels and channel["is_archived"]:
@@ -69,11 +89,11 @@ def scrape_channels():
 
     sys.stdout.write("Scraping channel \"%s\" starting from %s"%(channel["name"], get_date_string_ymd(timestamp)))
     sys.stdout.flush()
-    launch_scrape(directory, method, params, timestamp)
+    launch_scrape(directory, method, params, timestamp, umap)
     print ""
 
 # scrape groups. this method is stupidly similar to scrape_channels (decomposition? what's that?)
-def scrape_groups():
+def scrape_groups(umap):
   print "Getting groups..."
   for group in api.group_generator():
     if not config.scrape_archived_groups and group["is_archived"]:
@@ -85,13 +105,12 @@ def scrape_groups():
 
     sys.stdout.write("Scraping group \"%s\" starting from %s"%(group["name"], get_date_string_ymd(timestamp)))
     sys.stdout.flush()
-    launch_scrape(directory, method, params, timestamp)
+    launch_scrape(directory, method, params, timestamp, umap)
     print ""
 
 # scrape ims. copy paste!!
-def scrape_ims():
+def scrape_ims(umap):
   print "Getting ims..."
-  umap = api.user_map()
   for im in api.im_generator():
     if not im["user"] in umap:
       continue #wtf
@@ -102,16 +121,17 @@ def scrape_ims():
 
     sys.stdout.write("Scraping IMs from \"%s\" starting from %s"%(umap[im["user"]], get_date_string_ymd(timestamp)))
     sys.stdout.flush()
-    launch_scrape(directory, method, params, timestamp)
+    launch_scrape(directory, method, params, timestamp, umap)
     print ""
 
 # HELLO WORLD
 if __name__ == "__main__":
+  umap = api.user_map()
   if config.scrape_channels:
-    scrape_channels()
+    scrape_channels(umap)
 
   if config.scrape_groups:
-    scrape_groups()
+    scrape_groups(umap)
 
   if config.scrape_private_messages:
-    scrape_ims()
+    scrape_ims(umap)

@@ -3,6 +3,10 @@
 # https://api.slack.com/web
 token = ""
 
+# Slack has these user IDs for database purposes. Set this option
+# if you want those strings of random numbers replaced with usernames
+replace_user_ids = True
+
 # save channels? (True or False)
 scrape_channels = True
 # save groups? (True or False)
