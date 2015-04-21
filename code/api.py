@@ -60,6 +60,8 @@ def message_generator(method, parameters, oldest):
   parameters.append(("inclusive", "0"))
   while True:
     response = json_call(method, parameters + [("oldest", cur_oldest)])
+    if not response:
+      return
     sys.stdout.write(".") # status dot
     sys.stdout.flush()
     if not "messages" in response or not "has_more" in response:
@@ -81,6 +83,8 @@ def message_generator(method, parameters, oldest):
 # generator for channels
 def channel_generator():
   response = json_call("channels.list", [])
+  if not response:
+    return
   if "channels" in response:
     for channel in response["channels"]:
       yield channel
@@ -88,6 +92,8 @@ def channel_generator():
 # generator for direct messages
 def im_generator():
   response = json_call("im.list", [])
+  if not response:
+    return
   if "ims" in response:
     for im in response["ims"]:
       yield im
@@ -95,6 +101,8 @@ def im_generator():
 # generator for users
 def user_generator():
   response = json_call("users.list", [])
+  if not response:
+    return
   if "members" in response:
     for user in response["members"]:
       yield user
@@ -102,6 +110,8 @@ def user_generator():
 # id --> username map
 def user_map():
   response = {}
+  if not response:
+    return
   for user in user_generator():
     response[user["id"]] = user["name"]
   # manually add slackbot because it isn't in the user list...
@@ -112,6 +122,8 @@ def user_map():
 # generator for users
 def group_generator():
   response = json_call("groups.list", [])
+  if not response:
+    return
   if "groups" in response:
     for group in response["groups"]:
       yield group
