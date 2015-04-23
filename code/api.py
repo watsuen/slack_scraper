@@ -42,7 +42,7 @@ def json_call(method, parameters):
   parameters.append(("token", config.token))
   param_str = "?%s"%urllib.urlencode(parameters) if parameters else ""
   url = "%s%s%s"%(api_url, method, param_str)
-
+  
   # get stuff and convert to json
   status, contents = web_request(url)
   if status:
@@ -110,8 +110,6 @@ def user_generator():
 # id --> username map
 def user_map():
   response = {}
-  if not response:
-    return
   for user in user_generator():
     response[user["id"]] = user["name"]
   # manually add slackbot because it isn't in the user list...

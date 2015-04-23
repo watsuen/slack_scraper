@@ -1,1 +1,1 @@
-0 21 * * * PATH_HERE/slack_scraper/code/run.sh 
+0 21 * * * cd PATH_HERE/slack_scraper/code/; python scraper.py
